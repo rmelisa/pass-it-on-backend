@@ -102,13 +102,20 @@ app.post('/login', function (req, res) {
 
 // Add Item 
 app.post('/addItem', function (req, res) {
+    if (!req.headers.cookie || sessions[req.headers.cookie] === undefined) {
+        let response = {
+            status: false
+        }
+        res.send(JSON.stringify( response ))
+        return
+    }
     let parsed = JSON.parse(req.body)
     let minBid = parsed.minBid
     let itemName = parsed.itemName
     let imageName = parsed.filename
     let itemDescription = parsed.description
     let itemID = genID()
-    let username = parsed.username
+    let username = sessions[req.headers.cookie]
     let charity = parsed.charityChoice
     let itemDescriptions= {}
 
@@ -254,4 +261,24 @@ app.post('/newBid', function (req, res){
             res.send(JSON.stringify( response ))
         }
     })
+})
+
+app.get('/logout', function (req, res){
+    delete sessions[req.headers.cookie]
+})
+
+app.get('/sessionActive', function (req, res){
+    if (req.headers.cookie || sessions[req.headers.cookie] !== undefined) {
+        let response = {
+            status: true,
+            sessionID: req.headers.cookie,
+            username: sessions[req.headers.cookie]
+        }
+        res.send(JSON.stringify( response ))
+    } else {
+        let response = {
+            status: false
+        }
+        res.send(JSON.stringify( response ))
+    }
 })
