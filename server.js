@@ -206,7 +206,18 @@ app.post('/member', function (req, res) {
         res.send(JSON.stringify( result ))
     })
 })
-
+//Search endpoint based on memeber's name
+app.post('/search',function(req,res){
+    let parsed = JSON.parse(req.body)
+    let searchWord = parsed.query
+    usersdb.find({}).toArray(function(err, result){
+        if (err) throw err;
+        let searchResults = result.filter(function (user){
+            return user.username.toLowerCase().includes(searchWord)
+        })
+        res.send(JSON.stringify(searchResults))
+    })
+})
 // send back an array of all the members 
 app.get('/getMembers', function (req, res) {
     usersdb.find({}).toArray((err, result) => {
