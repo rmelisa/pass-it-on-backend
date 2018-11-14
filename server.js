@@ -121,7 +121,8 @@ app.post('/addItem', function (req, res) {
         username: username,
         charity: charity,
         comments: [],
-        currentBid: 0
+        currentBid: 0,
+        bidHistory:[]
     }
     itemsdb.insertOne(itemDescriptions[itemID], (err, result) => {
         if (err) throw err;
@@ -211,15 +212,16 @@ app.post('/newBid', function (req, res){
     let parsed = JSON.parse(req.body)
     let itemID = parsed.itemID
     itemID = parseInt(itemID)
-    let newBid = parsed.newBid
+    let newBid = parseInt(parsed.newBid)
     itemsdb.findOne({itemID:itemID},(err, result) => {
         if (err) throw err;
         if (newBid >= result.minBid && newBid > result.currentBid) {
-            itemsdb.updateOne({itemID:itemID},{$set:{currentBid:newBid}}, (err, result) => {
+            itemsdb.findOneAndUpdate({itemID:itemID},{$set:{currentBid:newBid},$push:{bidHistory:newBid}},{returnOriginal:false}, (err, result) => {
                 if (err) throw err;
                 console.log(result)
                 let response = {
                     status: true,
+                    item: result.value
                 }
                 res.send(JSON.stringify( response ))
             })
