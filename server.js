@@ -197,7 +197,7 @@ app.post('/itemDetails', function (req, res) {
     })
 })
 
-//Specifici member Details
+//Specific member Details
 app.post('/member', function (req, res) {
     let parsed = JSON.parse(req.body)
     let username = parsed.username
@@ -206,6 +206,17 @@ app.post('/member', function (req, res) {
         res.send(JSON.stringify( result ))
     })
 })
+
+// send back an array of all the members 
+app.get('/getMembers', function (req, res) {
+    usersdb.find({}).toArray((err, result) => {
+        if (err) throw err;
+        console.log(result)
+        res.send(JSON.stringify( result ))
+    })
+})
+
+
 
 //Updates the current bid for the specified itemID
 app.post('/newBid', function (req, res){
