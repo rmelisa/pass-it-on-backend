@@ -139,7 +139,9 @@ app.post('/addItem', function (req, res) {
         comments: [],
         currentBid: 0,
         bidHistory: [],
-        currentBidUser: ''
+        currentBidUser: '',
+        timer: Date.now(),
+        timerEnd: Date.now() + (60000 * 2)
     }
     itemsdb.insertOne(itemDescriptions[itemID], (err, result) => {
         if (err) throw err;
@@ -180,7 +182,7 @@ app.get('/home', function (req, res) {
         result.sort(function (a, b) {
             return b.currentBid - a.currentBid
         })
-        let itemsArray = result.slice(0, 4)
+        let itemsArray = result.slice(0, 5)
         res.send(JSON.stringify(itemsArray))
     })
 })
@@ -267,8 +269,6 @@ app.post('/newBid', function (req, res) {
     let itemID = parsed.itemID
     itemID = parseInt(itemID)
     let newBid = parseInt(parsed.newBid)
-    let itemName = parsed.itemName
-    let imageName = parsed.imageName
     itemsdb.findOne({
         itemID: itemID
     }, (err, result) => {
@@ -276,10 +276,8 @@ app.post('/newBid', function (req, res) {
         if (newBid >= result.minBid && newBid > result.currentBid) {
             let bid = {
                 username: sessions[req.headers.cookie],
-                itemID: itemID,
                 newBid: newBid,
-                itemName: itemName,
-                imageName: imageName
+                itemID: itemID
             }
             bidsdb.insertOne(bid, (err, result) => {
                 if (err) throw err;
@@ -338,12 +336,20 @@ app.get('/sessionActive', function (req, res) {
 app.get('/getBids', function (req, res) {
     let currentUsername = sessions[req.headers.cookie]
     console.log(currentUsername)
-    bidsdb.find({}).toArray((err, result) => {
+    bidsdb.find({username:currentUsername}).toArray((err, result) => {
         if (err) throw err;
         console.log(result)
-        let newArr = result.filter(function (bid) {
-            return bid.username === currentUsername
+        let bidsArr = result
+        itemsdb.find({}).toArray((err,result )=>{
+            let items = bidsArr.map(function(bid){
+                for(let i=0;i<result.length;i++){
+                    if(result[i].itemID === bid.itemID){
+                        return {...result[i], mybid: bid}
+                    }
+                }
+            })
+            console.log(items)
+            res.send(JSON.stringify(items))
         })
-        res.send(JSON.stringify(newArr))
     })
 })
