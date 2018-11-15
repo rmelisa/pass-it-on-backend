@@ -12,6 +12,7 @@ let sessions = {} // associates a session id to a username
 let db; //this is the database object
 let usersdb;
 let itemsdb;
+let bidsdb;
 
 let genID = function () {
     return Math.floor(Math.random() * 100000000000)
@@ -24,6 +25,7 @@ MongoClient.connect(url, {
     db = database.db(databaseName);
     usersdb = db.collection("usersdb")
     itemsdb = db.collection("itemsdb")
+    bidsdb = db.collection('bidsdb')
     app.listen(4000, function () { console.log("Server started on port 4000") })
 });
 
@@ -238,25 +240,46 @@ app.get('/getMembers', function (req, res) {
 
 //Updates the current bid for the specified itemID
 app.post('/newBid', function (req, res){
+    if (!req.headers.cookie || sessions[req.headers.cookie] === undefined) {
+        let response = {
+            status: 'notLogged'
+        }
+        res.send(JSON.stringify( response ))
+        return
+    }
     let parsed = JSON.parse(req.body)
     let itemID = parsed.itemID
     itemID = parseInt(itemID)
     let newBid = parseInt(parsed.newBid)
+    let itemName = parsed.itemName
+    let imageName = parsed.imageName
     itemsdb.findOne({itemID:itemID},(err, result) => {
         if (err) throw err;
         if (newBid >= result.minBid && newBid > result.currentBid) {
-            itemsdb.findOneAndUpdate({itemID:itemID},{$set:{currentBid:newBid},$push:{bidHistory:newBid}},{returnOriginal:false}, (err, result) => {
+            let bid = {
+                username: sessions[req.headers.cookie],
+                itemID: itemID,
+                newBid: newBid,
+                itemName: itemName,
+                imageName: imageName
+            }
+            bidsdb.insertOne(bid, (err, result) => {
                 if (err) throw err;
                 console.log(result)
-                let response = {
-                    status: true,
-                    item: result.value
-                }
-                res.send(JSON.stringify( response ))
-            })
+                itemsdb.findOneAndUpdate({itemID:itemID},{$set:{currentBid:newBid},$push:{bidHistory:newBid}},{returnOriginal:false}, (err, result) => {
+                    if (err) throw err;
+                    console.log(result)
+                    let response = {
+                        status: 'success',
+                        item: result.value,
+                        username: sessions[req.headers.cookie]
+                    }
+                    res.send(JSON.stringify( response ))
+                })
+            })  
         } else {
             let response = {
-                status: false,
+                status: 'lowBid',
             }
             res.send(JSON.stringify( response ))
         }
@@ -268,7 +291,7 @@ app.get('/logout', function (req, res){
 })
 
 app.get('/sessionActive', function (req, res){
-    if (req.headers.cookie || sessions[req.headers.cookie] !== undefined) {
+    if (req.headers.cookie && sessions[req.headers.cookie] !== undefined) {
         let response = {
             status: true,
             sessionID: req.headers.cookie,
@@ -281,4 +304,17 @@ app.get('/sessionActive', function (req, res){
         }
         res.send(JSON.stringify( response ))
     }
+})
+
+app.get('/getBids', function (req, res){
+    let currentUsername = sessions[req.headers.cookie]
+    console.log(currentUsername)
+    bidsdb.find({}).toArray((err, result) => {
+        if (err) throw err;
+        console.log(result)
+        let newArr = result.filter(function (bid){
+            return bid.username === currentUsername
+        })
+        res.send(JSON.stringify( newArr ))
+    })
 })
