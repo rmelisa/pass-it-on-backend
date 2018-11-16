@@ -29,8 +29,8 @@ MongoClient.connect(url, {
     usersdb = db.collection("usersdb")
     itemsdb = db.collection("itemsdb")
     bidsdb = db.collection('bidsdb')
-    app.listen(4000, function () {
-        console.log("Server started on port 4000")
+    app.listen(4030, function () {
+        console.log("Server started on port 4030")
     })
 });
 
@@ -72,7 +72,7 @@ app.post('/signup', function (req, res) {
                 res.set('Set-Cookie', sessionID)
                 let response = {
                     status: true,
-                    sessionID: sessionID,
+                    sessionID: true,
                     username: username
                 }
                 res.send(JSON.stringify(response))
@@ -100,7 +100,7 @@ app.post('/login', function (req, res) {
             sessions[sessionID] = username
             res.set('Set-Cookie', sessionID)
             let response = {
-                sessionID: sessionID,
+                sessionID: true,
                 status: true,
                 username: username
             }
@@ -321,7 +321,7 @@ app.get('/sessionActive', function (req, res) {
     if (req.headers.cookie && sessions[req.headers.cookie] !== undefined) {
         let response = {
             status: true,
-            sessionID: req.headers.cookie,
+            sessionID: true,
             username: sessions[req.headers.cookie]
         }
         res.send(JSON.stringify(response))
