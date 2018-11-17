@@ -1,3 +1,5 @@
+var nodeGeocoder = require('node-geocoder'); //needed for the location information
+var geocoder = nodeGeocoder({provider:"openstreetmap"}) // needed for the Map
 const express = require("express");
 const app = express();
 const MongoClient = require("mongodb").MongoClient;
@@ -29,7 +31,7 @@ MongoClient.connect(url, {
     usersdb = db.collection("usersdb")
     itemsdb = db.collection("itemsdb")
     bidsdb = db.collection('bidsdb')
-    app.listen(4030, function () {
+    app.listen(4000, function () {
         console.log("Server started on port 4030")
     })
 });
@@ -44,7 +46,14 @@ app.post('/signup', function (req, res) {
     let lastName = parsed.lastNameInput
     let email = parsed.email
     let bio = parsed.bioInput
-    let address = parsed.address
+    let address = parsed.addressInput
+    //Gets the location of the user by typing a valid address:
+    geocoder.geocode(address).then( function ( data ) {
+        console.log(data)
+        let location={
+            lat: parseFloat(data[0].latitude),
+            lon: parseFloat(data[0].longitude)
+        }
     usersdb.findOne({
         username: username
     }, function (err, result) {
@@ -64,7 +73,8 @@ app.post('/signup', function (req, res) {
                 lastName: lastName,
                 email: email,
                 bio: bio,
-                address: address
+                address: address,
+                location: location
             }
             usersdb.insertOne(user, (err, result) => {
                 let sessionID = genID()
@@ -80,6 +90,8 @@ app.post('/signup', function (req, res) {
         }
     })
 })
+})
+
 
 //login endpoint
 app.post('/login', function (req, res) {
@@ -196,17 +208,17 @@ app.post('/addComment', function (req, res) {
     itemsdb.updateOne({
         itemID: itemID
     }, {
-        $push: {
-            comments: comment
-        }
-    }, (err, result) => {
-        if (err) throw err;
-        console.log(result)
-        let response = {
-            status: true,
-        }
-        res.send(JSON.stringify(response))
-    })
+            $push: {
+                comments: comment
+            }
+        }, (err, result) => {
+            if (err) throw err;
+            console.log(result)
+            let response = {
+                status: true,
+            }
+            res.send(JSON.stringify(response))
+        })
 })
 
 // View all Item Details for the specific itemID
@@ -232,6 +244,7 @@ app.post('/member', function (req, res) {
         if (err) throw err;
         res.send(JSON.stringify(result))
     })
+
 })
 //Search endpoint based on memeber's name
 app.post('/search', function (req, res) {
@@ -285,24 +298,24 @@ app.post('/newBid', function (req, res) {
                 itemsdb.findOneAndUpdate({
                     itemID: itemID
                 }, {
-                    $set: {
-                        currentBid: newBid,
-                        currentBidUser: sessions[req.headers.cookie]
-                    },
-                    $push: {
-                        bidHistory: newBid
-                    }
-                }, {
-                    returnOriginal: false
-                }, (err, result) => {
-                    if (err) throw err;
-                    console.log(result)
-                    let response = {
-                        status: 'success',
-                        item: result.value,
-                    }
-                    res.send(JSON.stringify(response))
-                })
+                        $set: {
+                            currentBid: newBid,
+                            currentBidUser: sessions[req.headers.cookie]
+                        },
+                        $push: {
+                            bidHistory: newBid
+                        }
+                    }, {
+                        returnOriginal: false
+                    }, (err, result) => {
+                        if (err) throw err;
+                        console.log(result)
+                        let response = {
+                            status: 'success',
+                            item: result.value,
+                        }
+                        res.send(JSON.stringify(response))
+                    })
             })
         } else {
             let response = {
@@ -336,15 +349,15 @@ app.get('/sessionActive', function (req, res) {
 app.get('/getBids', function (req, res) {
     let currentUsername = sessions[req.headers.cookie]
     console.log(currentUsername)
-    bidsdb.find({username:currentUsername}).toArray((err, result) => {
+    bidsdb.find({ username: currentUsername }).toArray((err, result) => {
         if (err) throw err;
         console.log(result)
         let bidsArr = result
-        itemsdb.find({}).toArray((err,result )=>{
-            let items = bidsArr.map(function(bid){
-                for(let i=0;i<result.length;i++){
-                    if(result[i].itemID === bid.itemID){
-                        return {...result[i], mybid: bid}
+        itemsdb.find({}).toArray((err, result) => {
+            let items = bidsArr.map(function (bid) {
+                for (let i = 0; i < result.length; i++) {
+                    if (result[i].itemID === bid.itemID) {
+                        return { ...result[i], mybid: bid }
                     }
                 }
             })
@@ -353,3 +366,39 @@ app.get('/getBids', function (req, res) {
         })
     })
 })
+
+app.get('/getAllCharities', function (req, res) {
+    let charityMap = {}
+    itemsdb.find({}).toArray((err, result) => {
+        result.forEach(item => {
+            let currentTime = Date.now()
+        if (item.timerEnd < currentTime) {
+            if (!charityMap[item.charity]) {
+                charityMap[item.charity] = item.currentBid
+            } else {
+                charityMap[item.charity] += item.currentBid
+            }
+        }
+    });
+        res.send(JSON.stringify(charityMap))
+    })
+})
+
+
+//Remove Item endpoint
+// app.post('/removeItem', function (req, res) {
+//     let parsed = JSON.parse(req.body)
+//     let itemID = parsed.itemID
+
+//     itemsdb.deleteOne({
+//         itemID: itemID
+//     }, (err, result) => {
+//         if (err) throw err;
+
+//     })
+//     itemsdb.find({}).toArray((err, result) => {
+//         if (err) throw err;
+//         console.log(result)
+//         res.send(JSON.stringify(result))
+//     })
+// })
