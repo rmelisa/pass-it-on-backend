@@ -31,7 +31,7 @@ MongoClient.connect(url, {
     usersdb = db.collection("usersdb")
     itemsdb = db.collection("itemsdb")
     bidsdb = db.collection('bidsdb')
-    app.listen(4000, function () {
+    app.listen(4030, function () {
         console.log("Server started on port 4030")
     })
 });
@@ -153,7 +153,7 @@ app.post('/addItem', function (req, res) {
         bidHistory: [],
         currentBidUser: '',
         timer: Date.now(),
-        timerEnd: Date.now() + (60000 * 2)
+        timerEnd: Date.now() + (60000 * 60 * 24 * 5)
     }
     itemsdb.insertOne(itemDescriptions[itemID], (err, result) => {
         if (err) throw err;
