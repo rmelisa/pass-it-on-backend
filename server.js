@@ -194,7 +194,7 @@ app.get('/home', function (req, res) {
         result.sort(function (a, b) {
             return b.currentBid - a.currentBid
         })
-        let itemsArray = result.slice(0, 5)
+        let itemsArray = result.slice(0, 4)
         res.send(JSON.stringify(itemsArray))
     })
 })
